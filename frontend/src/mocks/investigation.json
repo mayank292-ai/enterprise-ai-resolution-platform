@@ -1,0 +1,224 @@
+{
+  "investigation_id": "56408d70-eaff-4884-8922-9a7fb274d5f8",
+  "workspace_id": "11111111-1111-1111-1111-111111111111",
+  "incident_title": "Cross-border settlement dashboard mismatch",
+  "incident_description": "Treasury reports that several high-value cross-border payments are absent from the downstream settlement dashboard, although core payment processing completed.",
+  "status": "completed",
+  "classification": null,
+  "hypotheses": [
+    {
+      "hypothesis_id": "f7ae8e60-21bb-4ece-88cc-9da0e2333b9c",
+      "statement": "Downstream publication failed after successful payment processing.",
+      "status": "confirmed",
+      "supporting_evidence_ids": [
+        "63360e8f-742f-48e8-a897-ec91818507bf",
+        "2a03d856-4849-43b0-b158-ecffa84555a9"
+      ],
+      "contradicting_evidence_ids": []
+    },
+    {
+      "hypothesis_id": "83094dd0-3ba4-41d6-97b8-9846a5c92c5c",
+      "statement": "Reference exchange rates were unavailable.",
+      "status": "rejected",
+      "supporting_evidence_ids": [],
+      "contradicting_evidence_ids": [
+        "8eaf1118-3aa6-40a3-a9a5-89f9d6d6391e"
+      ]
+    },
+    {
+      "hypothesis_id": "4f8ef0c4-2519-4f22-b96d-de014b7027e2",
+      "statement": "A schema deployment introduced an incompatible attribute mapping.",
+      "status": "confirmed",
+      "supporting_evidence_ids": [
+        "8902e48d-6a5a-4c76-b5e9-6c7957ae881c"
+      ],
+      "contradicting_evidence_ids": []
+    }
+  ],
+  "agent_decisions": [
+    {
+      "decision_id": "7f30ca23-e3c5-408d-9b2b-64fea190daa1",
+      "agent_name": "payment_investigation_agent",
+      "objective": "Identify the affected payment population.",
+      "reason": "The affected population and lifecycle divergence must be established first.",
+      "status": "completed",
+      "evidence_ids": [
+        "63360e8f-742f-48e8-a897-ec91818507bf"
+      ],
+      "started_at": "2026-07-18T13:01:00Z",
+      "completed_at": "2026-07-18T13:01:08Z"
+    },
+    {
+      "decision_id": "2c30fbbf-87e9-42d9-93bc-a14a6df92928",
+      "agent_name": "fx_investigation_agent",
+      "objective": "Inspect FX enrichment for affected payments.",
+      "reason": "Payment processing completed, but downstream publication depends on completed conversion.",
+      "status": "completed",
+      "evidence_ids": [
+        "1ccfdae6-b9a4-4010-aa8c-a57b2bdcc3f7"
+      ],
+      "started_at": "2026-07-18T13:01:09Z",
+      "completed_at": "2026-07-18T13:01:15Z"
+    },
+    {
+      "decision_id": "b9cda58f-326f-4198-8e01-229aaacccae4",
+      "agent_name": "reference_data_agent",
+      "objective": "Confirm whether required exchange rates existed.",
+      "reason": "Rate availability must be eliminated before concluding that payment attributes caused the failure.",
+      "status": "completed",
+      "evidence_ids": [
+        "8eaf1118-3aa6-40a3-a9a5-89f9d6d6391e"
+      ],
+      "started_at": "2026-07-18T13:01:16Z",
+      "completed_at": "2026-07-18T13:01:21Z"
+    },
+    {
+      "decision_id": "b4d88ded-aa92-48ae-b4d3-cfc5191cc095",
+      "agent_name": "data_quality_agent",
+      "objective": "Identify the validation blocking publication.",
+      "reason": "FX evidence shows missing enrichment input, so downstream validation outcomes must be inspected.",
+      "status": "completed",
+      "evidence_ids": [
+        "2a03d856-4849-43b0-b158-ecffa84555a9"
+      ],
+      "started_at": "2026-07-18T13:01:22Z",
+      "completed_at": "2026-07-18T13:01:28Z"
+    },
+    {
+      "decision_id": "3bb0a056-7abc-4498-8687-ca2c2c1ef0a6",
+      "agent_name": "change_analysis_agent",
+      "objective": "Correlate the failure with recent changes.",
+      "reason": "The consistent missing attribute suggests a producer schema or mapping regression.",
+      "status": "completed",
+      "evidence_ids": [
+        "8902e48d-6a5a-4c76-b5e9-6c7957ae881c"
+      ],
+      "started_at": "2026-07-18T13:01:29Z",
+      "completed_at": "2026-07-18T13:01:36Z"
+    }
+  ],
+  "evidence": [
+    {
+      "evidence_id": "63360e8f-742f-48e8-a897-ec91818507bf",
+      "source": "payment_events",
+      "title": "Affected payment population identified",
+      "summary": "Thirty-seven high-value cross-border payments were processed successfully but were not published to downstream settlement reporting.",
+      "confidence": "high",
+      "data": {
+        "affected_count": 37,
+        "affected_value": 182450000,
+        "currency": "USD",
+        "sample_payment_ids": [
+          "PAY-20260718-1042",
+          "PAY-20260718-1088",
+          "PAY-20260718-1121"
+        ]
+      },
+      "created_at": "2026-07-18T21:53:53.281680Z"
+    },
+    {
+      "evidence_id": "1ccfdae6-b9a4-4010-aa8c-a57b2bdcc3f7",
+      "source": "fx_conversion_service",
+      "title": "FX enrichment was not completed",
+      "summary": "All affected payments were missing the source-currency attribute required by the FX conversion service.",
+      "confidence": "high",
+      "data": {
+        "failed_conversion_count": 37,
+        "missing_attribute": "sourceCurrency"
+      },
+      "created_at": "2026-07-18T21:53:53.281729Z"
+    },
+    {
+      "evidence_id": "8eaf1118-3aa6-40a3-a9a5-89f9d6d6391e",
+      "source": "aminet_reference_data",
+      "title": "Required exchange rates were available",
+      "summary": "Valid rates existed for every required currency pair during the incident window.",
+      "confidence": "verified",
+      "data": {
+        "required_pairs": [
+          "GBP/USD",
+          "EUR/USD",
+          "CHF/USD"
+        ],
+        "missing_pairs": []
+      },
+      "created_at": "2026-07-18T21:53:53.281748Z"
+    },
+    {
+      "evidence_id": "2a03d856-4849-43b0-b158-ecffa84555a9",
+      "source": "data_quality_controls",
+      "title": "Publication records failed mandatory validation",
+      "summary": "The downstream publication control rejected all affected records because sourceCurrency was null.",
+      "confidence": "high",
+      "data": {
+        "control_name": "FX_REQUIRED_ATTRIBUTES_COMPLETE",
+        "failed_records": 37
+      },
+      "created_at": "2026-07-18T21:53:53.281761Z"
+    },
+    {
+      "evidence_id": "8902e48d-6a5a-4c76-b5e9-6c7957ae881c",
+      "source": "deployment_history",
+      "title": "Failures began immediately after schema deployment",
+      "summary": "Payment producer version 4.8 renamed sourceCurrency to instructedCurrency, but the downstream mapping continued reading the previous attribute.",
+      "confidence": "verified",
+      "data": {
+        "deployment_version": "4.8.0",
+        "deployed_at": "2026-07-18T08:05:00Z",
+        "old_attribute": "sourceCurrency",
+        "new_attribute": "instructedCurrency"
+      },
+      "created_at": "2026-07-18T21:53:53.281773Z"
+    }
+  ],
+  "root_cause": {
+    "title": "Schema mapping regression blocked FX enrichment",
+    "explanation": "Producer version 4.8 renamed sourceCurrency to instructedCurrency. The downstream mapping continued reading sourceCurrency, causing null enrichment input and rejection by the publication quality control.",
+    "confidence": "verified",
+    "evidence_ids": [
+      "1ccfdae6-b9a4-4010-aa8c-a57b2bdcc3f7",
+      "2a03d856-4849-43b0-b158-ecffa84555a9",
+      "8902e48d-6a5a-4c76-b5e9-6c7957ae881c"
+    ]
+  },
+  "business_impact": {
+    "affected_records": 37,
+    "affected_value": 182450000.0,
+    "currency": "USD",
+    "affected_systems": [
+      "FX Conversion Service",
+      "Settlement Dashboard",
+      "Treasury Reconciliation"
+    ],
+    "earliest_occurrence": "2026-07-18T08:07:00Z"
+  },
+  "recommendations": [
+    {
+      "title": "Restore the compatible field mapping",
+      "description": "Map instructedCurrency to the downstream source-currency contract and replay the affected payment population.",
+      "priority": "critical",
+      "recommendation_type": "remediation"
+    },
+    {
+      "title": "Add schema compatibility validation",
+      "description": "Validate producer schema changes against downstream required mappings before deployment.",
+      "priority": "high",
+      "recommendation_type": "prevention"
+    }
+  ],
+  "executive_summary": [
+    "Thirty-seven high-value cross-border payments worth USD 182.45 million were missing from settlement reporting.",
+    "The payments completed core processing but failed downstream FX enrichment and publication.",
+    "A schema rename introduced in producer version 4.8 was not reflected in the downstream mapping."
+  ],
+  "capability_opportunity": {
+    "title": "Schema Compatibility Guardian",
+    "problem_detected": "Schema changes can be deployed without validating downstream field dependencies.",
+    "proposed_capability": "Automatically compare producer schema changes with registered downstream mappings before deployment.",
+    "expected_benefit": "Prevent mapping regressions and identify affected consumers before production release."
+  },
+  "created_at": "2026-07-18T21:53:53.282001Z",
+  "updated_at": "2026-07-18T21:53:53.282002Z",
+  "completed_at": "2026-07-18T21:53:53.281972Z",
+  "error_message": null
+}

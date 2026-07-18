@@ -310,18 +310,3 @@ The platform demonstrates how a recurring investigation that once required hours
 
 ---
 
-# Team
-
-Backend / AI Platform
-
-- Mayank Sharma
-
-Frontend
-
-- TBD
-
----
-
-# License
-
-Internal hackathon project.

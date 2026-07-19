@@ -2,7 +2,10 @@
 
 from typing import Protocol
 
-from app.models import Evidence, Investigation
+from app.models import (
+    Investigation,
+    SpecialistInvestigationResult,
+)
 
 
 class SpecialistAgent(Protocol):
@@ -18,5 +21,5 @@ class SpecialistAgent(Protocol):
         investigation: Investigation,
         objective: str,
         evidence_needed: list[str],
-    ) -> list[Evidence]:
-        """Investigate one objective and return factual evidence."""
+    ) -> SpecialistInvestigationResult:
+        """Investigate one objective and return a structured result."""

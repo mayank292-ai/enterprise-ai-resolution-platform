@@ -4,7 +4,12 @@ from datetime import datetime, timezone
 from enum import Enum
 from typing import Any
 from uuid import UUID, uuid4
-
+from app.models.investigation_outputs import (
+    HypothesisUpdate,
+    InvestigationFinding,
+    SpecialistAssignmentOutcome,
+    TrustedToolExecution,
+)
 from pydantic import BaseModel, Field
 
 
@@ -97,11 +102,23 @@ class AgentDecision(BaseModel):
     """One autonomous routing decision made by the supervisor."""
 
     decision_id: UUID = Field(default_factory=uuid4)
+
     agent_name: str
     objective: str
     reason: str
-    status: AgentExecutionStatus = AgentExecutionStatus.PENDING
-    evidence_ids: list[UUID] = Field(default_factory=list)
+
+    status: AgentExecutionStatus = (
+        AgentExecutionStatus.PENDING
+    )
+
+    evidence_ids: list[UUID] = Field(
+        default_factory=list
+    )
+
+    tool_execution_ids: list[UUID] = Field(
+        default_factory=list
+    )
+
     started_at: datetime | None = None
     completed_at: datetime | None = None
 
@@ -168,7 +185,33 @@ class Investigation(BaseModel):
     hypotheses: list[Hypothesis] = Field(default_factory=list)
     agent_decisions: list[AgentDecision] = Field(default_factory=list)
     evidence: list[Evidence] = Field(default_factory=list)
+    findings: list[InvestigationFinding] = Field(
+        default_factory=list
+    )
 
+    hypothesis_updates: list[HypothesisUpdate] = Field(
+        default_factory=list
+    )
+
+    open_questions: list[str] = Field(
+        default_factory=list
+    )
+
+    specialist_recommendations: list[str] = Field(
+        default_factory=list
+    )
+
+    tool_execution_trace: list[
+        TrustedToolExecution
+    ] = Field(
+        default_factory=list
+    )
+
+    specialist_outcomes: list[
+        SpecialistAssignmentOutcome
+    ] = Field(
+        default_factory=list
+    )
     root_cause: RootCause | None = None
     business_impact: BusinessImpact | None = None
     recommendations: list[Recommendation] = Field(default_factory=list)

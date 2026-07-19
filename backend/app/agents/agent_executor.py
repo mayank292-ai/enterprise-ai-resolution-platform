@@ -9,7 +9,10 @@ from app.models import (
     AgentDecision,
     AgentExecutionStatus,
     Evidence,
+    HypothesisUpdateStatus,
     Investigation,
+    SpecialistAssignmentOutcome,
+    SpecialistInvestigationResult,
     SupervisorAction,
     SupervisorActionType,
 )
@@ -30,7 +33,7 @@ class AgentExecutor:
         *,
         investigation: Investigation,
         action: SupervisorAction,
-    ) -> list[Evidence]:
+    ) -> SpecialistInvestigationResult:
         """Execute one delegated or verification action."""
 
         if action.action_type not in {
@@ -73,7 +76,7 @@ class AgentExecutor:
         investigation.agent_decisions.append(decision)
 
         try:
-            evidence = await specialist.investigate(
+            result = await specialist.investigate(
                 investigation=investigation,
                 objective=action.objective,
                 evidence_needed=action.evidence_needed,
@@ -81,17 +84,109 @@ class AgentExecutor:
         except Exception:
             decision.status = AgentExecutionStatus.FAILED
             decision.completed_at = datetime.now(timezone.utc)
-            investigation.updated_at = datetime.now(timezone.utc)
+            investigation.updated_at = datetime.now(
+                timezone.utc
+            )
             raise
 
-        investigation.evidence.extend(evidence)
+        normalized_evidence = [
+            Evidence(
+                source=item.source,
+                title=item.title,
+                summary=item.summary,
+                confidence=item.confidence,
+                data=item.data,
+            )
+            for item in result.evidence
+        ]
+
+        result.evidence = normalized_evidence
+
+        investigation.evidence.extend(
+            normalized_evidence
+        )
 
         decision.evidence_ids = [
             item.evidence_id
-            for item in evidence
+            for item in normalized_evidence
         ]
+
+        for trace_item in result.execution_trace:
+            trace_item.agent_name = action.agent_name
+            trace_item.decision_id = decision.decision_id
+
+        for hypothesis_update in result.hypothesis_updates:
+            if (
+                action.agent_name != "verification_agent"
+                and hypothesis_update.status
+                == HypothesisUpdateStatus.CONFIRMED
+            ):
+                hypothesis_update.status = (
+                    HypothesisUpdateStatus.SUPPORTED
+                )
+
+                hypothesis_update.confidence = min(
+                    hypothesis_update.confidence,
+                    0.95,
+                )
+
+                hypothesis_update.reasoning = (
+                    f"{hypothesis_update.reasoning} "
+                    "This conclusion remains supported rather "
+                    "than confirmed until independently verified."
+                )
+
+        investigation.findings.extend(
+            result.findings
+        )
+
+        investigation.hypothesis_updates.extend(
+            result.hypothesis_updates
+        )
+
+        investigation.open_questions.extend(
+            question
+            for question in result.open_questions
+            if question not in investigation.open_questions
+        )
+
+        investigation.specialist_recommendations.extend(
+            recommendation
+            for recommendation in result.recommendations
+            if recommendation
+            not in investigation.specialist_recommendations
+        )
+
+        investigation.tool_execution_trace.extend(
+            result.execution_trace
+        )
+
+        outcome_confidence = result.confidence
+
+        if action.agent_name != "verification_agent":
+            outcome_confidence = min(
+                outcome_confidence,
+                0.95,
+            )
+
+        investigation.specialist_outcomes.append(
+            SpecialistAssignmentOutcome(
+                decision_id=decision.decision_id,
+                agent_name=action.agent_name,
+                summary=result.summary,
+                confidence=outcome_confidence,
+            )
+        )
+
+        decision.tool_execution_ids = [
+            item.execution_id
+            for item in result.execution_trace
+        ]
+
         decision.status = AgentExecutionStatus.COMPLETED
         decision.completed_at = datetime.now(timezone.utc)
-        investigation.updated_at = datetime.now(timezone.utc)
+        investigation.updated_at = datetime.now(
+            timezone.utc
+        )
 
-        return evidence
+        return result

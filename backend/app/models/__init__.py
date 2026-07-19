@@ -16,6 +16,23 @@ from app.models.investigation import (
     SupervisorActionType,
     SupervisorConfidence,
 )
+from app.models.investigation_outputs import (
+    HypothesisUpdate,
+    HypothesisUpdateStatus,
+    InvestigationFinding,
+    SpecialistAssignmentOutcome,
+    ToolExecution,
+    TrustedToolExecution,
+)
+from app.models.specialist_result import (
+    SpecialistInvestigationResult,  
+)
+from app.models.specialist_step import (
+    CapabilityGap,
+    SpecialistStep,
+    SpecialistStepType,
+    SpecialistToolCall,
+)
 
 __all__ = [
     "AgentDecision",
@@ -34,4 +51,15 @@ __all__ = [
     "SupervisorAction",
     "SupervisorActionType",
     "SupervisorConfidence",
+    "HypothesisUpdate",
+    "HypothesisUpdateStatus",
+    "InvestigationFinding",
+    "SpecialistInvestigationResult",
+    "ToolExecution",
+    "CapabilityGap",
+    "SpecialistStep",
+    "SpecialistStepType",
+    "SpecialistToolCall",
+    "TrustedToolExecution",
+    "SpecialistAssignmentOutcome",
 ]

@@ -190,3 +190,27 @@ def create_default_agent_registry() -> AgentRegistry:
     )
 
     return registry
+def create_payment_agent_registry() -> AgentRegistry:
+    """Create a supervisor registry containing the payment agent only."""
+
+    registry = AgentRegistry()
+
+    registry.register(
+        AgentCapability(
+            name="payment_investigation_agent",
+            display_name="Payment Investigation Agent",
+            description=(
+                "Investigates payment lifecycle events, statuses, "
+                "amounts, currencies, processing stages, and downstream "
+                "publication outcomes."
+            ),
+            supported_objectives=(
+                "Identify the affected payment population.",
+                "Reconstruct the lifecycle of selected payments.",
+                "Compare successful and unsuccessful payment cohorts.",
+                "Inspect downstream publication and settlement states.",
+            ),
+        )
+    )
+
+    return registry

@@ -1,6 +1,17 @@
 """Registry of executable specialist-agent implementations."""
 
+from app.agents.model_client import StructuredModelClient
+from app.agents.payment_investigation_agent import (
+    PaymentInvestigationAgent,
+)
 from app.agents.specialist_agent import SpecialistAgent
+from app.connectors.mock_payment_connector import (
+    MockPaymentConnector,
+)
+from app.tools.payment_tool_catalog import (
+    create_payment_tool_catalog,
+)
+from app.tools.payment_tools import PaymentTools
 
 
 class SpecialistAgentRegistry:
@@ -43,3 +54,31 @@ class SpecialistAgentRegistry:
         """Return the names of all executable specialists."""
 
         return list(self._agents)
+
+
+def create_default_specialist_registry(
+    *,
+    model_client: StructuredModelClient,
+) -> SpecialistAgentRegistry:
+    """Create executable specialist implementations."""
+
+    registry = SpecialistAgentRegistry()
+
+    payment_connector = MockPaymentConnector()
+
+    payment_tools = PaymentTools(
+        connector=payment_connector,
+    )
+
+    payment_tool_catalog = create_payment_tool_catalog(
+        payment_tools=payment_tools,
+    )
+
+    registry.register(
+        PaymentInvestigationAgent(
+            model_client=model_client,
+            tool_catalog=payment_tool_catalog,
+        )
+    )
+
+    return registry

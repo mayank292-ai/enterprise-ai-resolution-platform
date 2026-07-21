@@ -1,5 +1,6 @@
 """Service responsible for managing enterprise investigations."""
 
+from collections.abc import Iterable
 from datetime import datetime, timezone
 
 from app.models import (
@@ -10,16 +11,25 @@ from app.models import (
 
 
 class InvestigationService:
-    """Coordinates the lifecycle of an investigation."""
+    """Coordinates the lifecycle of enterprise investigations."""
 
-    def __init__(self) -> None:
+    def __init__(
+        self,
+        initial_investigations: Iterable[Investigation] | None = None,
+    ) -> None:
+        """Create the service and optionally preload investigations."""
+
         self._investigations: dict[str, Investigation] = {}
+
+        if initial_investigations is not None:
+            for investigation in initial_investigations:
+                self.save_investigation(investigation)
 
     def create_investigation(
         self,
         request: InvestigationRequest,
     ) -> Investigation:
-        """Create a new investigation."""
+        """Create and store a new investigation."""
 
         investigation = Investigation(
             workspace_id=request.workspace_id,
@@ -27,6 +37,14 @@ class InvestigationService:
             incident_description=request.incident_description,
             status=InvestigationStatus.CREATED,
         )
+
+        return self.save_investigation(investigation)
+
+    def save_investigation(
+        self,
+        investigation: Investigation,
+    ) -> Investigation:
+        """Store or replace an investigation."""
 
         self._investigations[
             str(investigation.investigation_id)
@@ -38,7 +56,7 @@ class InvestigationService:
         self,
         investigation_id: str,
     ) -> Investigation | None:
-        """Return an investigation."""
+        """Return an investigation by identifier."""
 
         return self._investigations.get(investigation_id)
 
@@ -47,17 +65,23 @@ class InvestigationService:
         investigation: Investigation,
         status: InvestigationStatus,
     ) -> Investigation:
-        """Update investigation status."""
+        """Update and persist an investigation status."""
+
+        current_time = datetime.now(timezone.utc)
 
         investigation.status = status
-        investigation.updated_at = datetime.now(timezone.utc)
+        investigation.updated_at = current_time
 
         if status == InvestigationStatus.COMPLETED:
-            investigation.completed_at = datetime.now(timezone.utc)
+            investigation.completed_at = current_time
 
-        return investigation
+        return self.save_investigation(investigation)
 
     def list_investigations(self) -> list[Investigation]:
-        """Return all investigations."""
+        """Return investigations ordered by most recent activity."""
 
-        return list(self._investigations.values())
+        return sorted(
+            self._investigations.values(),
+            key=lambda investigation: investigation.updated_at,
+            reverse=True,
+        )

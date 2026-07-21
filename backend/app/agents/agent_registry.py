@@ -191,7 +191,7 @@ def create_default_agent_registry() -> AgentRegistry:
 
     return registry
 def create_payment_agent_registry() -> AgentRegistry:
-    """Create a supervisor registry containing the payment agent only."""
+    """Create the supervisor registry for currently executable agents."""
 
     registry = AgentRegistry()
 
@@ -209,6 +209,24 @@ def create_payment_agent_registry() -> AgentRegistry:
                 "Reconstruct the lifecycle of selected payments.",
                 "Compare successful and unsuccessful payment cohorts.",
                 "Inspect downstream publication and settlement states.",
+            ),
+        )
+    )
+
+    registry.register(
+        AgentCapability(
+            name="verification_agent",
+            display_name="Verification Agent",
+            description=(
+                "Challenges proposed conclusions, searches for conflicting "
+                "evidence, validates affected populations, and confirms "
+                "whether the evidence sufficiently supports the root cause."
+            ),
+            supported_objectives=(
+                "Search for contradictory evidence.",
+                "Validate the proposed root cause.",
+                "Verify impact calculations.",
+                "Determine whether the investigation can be concluded.",
             ),
         )
     )

@@ -4,6 +4,7 @@ from app.agents.model_client import StructuredModelClient
 from app.agents.payment_investigation_agent import (
     PaymentInvestigationAgent,
 )
+from app.agents.verification_agent import VerificationAgent
 from app.agents.specialist_agent import SpecialistAgent
 from app.connectors.mock_payment_connector import (
     MockPaymentConnector,
@@ -76,6 +77,13 @@ def create_default_specialist_registry(
 
     registry.register(
         PaymentInvestigationAgent(
+            model_client=model_client,
+            tool_catalog=payment_tool_catalog,
+        )
+    )
+
+    registry.register(
+        VerificationAgent(
             model_client=model_client,
             tool_catalog=payment_tool_catalog,
         )

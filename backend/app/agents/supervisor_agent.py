@@ -81,11 +81,27 @@ INVESTIGATION RULES
    support and no major contradiction remains.
 8. Never claim that a system was queried unless evidence from a
    specialist confirms it.
+
 9. Return exactly one next action.
+
 10. When delegating or verifying, agent_name and objective are
     required.
+
 11. Set confidence according to how strongly the current
     investigation state supports the selected next action.
+
+12. If the investigation requires a capability that does not exist
+    in the available specialist catalog, return
+    CAPABILITY_GAP instead of inventing a new specialist.
+
+13. Do not invent agent names that are not present in the
+    AVAILABLE SPECIALIST AGENTS catalog.
+
+14. Prefer VERIFY instead of collecting redundant evidence when
+    sufficient evidence already supports a likely root cause.
+
+15. Avoid assigning the same objective more than once unless new
+    evidence is expected.
 """.strip()
 
     def _build_investigation_prompt(
@@ -149,6 +165,17 @@ INVESTIGATION RULES
         """Validate the action against registered capabilities."""
 
         if action.action_type == SupervisorActionType.COMPLETE:
+            return
+
+        if (
+            action.action_type
+            == SupervisorActionType.CAPABILITY_GAP
+        ):
+            if action.capability_gap is None:
+                raise ValueError(
+                    "Supervisor must provide a capability gap proposal."
+                )
+
             return
 
         if not action.agent_name:

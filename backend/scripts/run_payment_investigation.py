@@ -4,45 +4,15 @@ import asyncio
 import json
 from uuid import uuid4
 
-from app.agents.agent_executor import AgentExecutor
-from app.agents.agent_registry import (
-    create_payment_agent_registry,
-)
-from app.agents.gemini_model_client import GeminiModelClient
-from app.agents.specialist_agent_registry import (
-    create_default_specialist_registry,
-)
-from app.agents.supervisor_agent import SupervisorAgent
+from app.runtime import create_orchestrator
 from app.models import Investigation
-from app.services.investigation_orchestrator import (
-    InvestigationOrchestrator,
-)
+
 
 
 async def main() -> None:
     """Run the payment investigation vertical slice."""
 
-    model_client = GeminiModelClient()
-
-    supervisor_registry = create_payment_agent_registry()
-
-    specialist_registry = create_default_specialist_registry(
-        model_client=model_client,
-    )
-
-    supervisor = SupervisorAgent(
-        model_client=model_client,
-        agent_registry=supervisor_registry,
-    )
-
-    executor = AgentExecutor(
-        specialist_registry=specialist_registry,
-    )
-
-    orchestrator = InvestigationOrchestrator(
-        supervisor=supervisor,
-        agent_executor=executor,
-    )
+    orchestrator = create_orchestrator()
 
     investigation = Investigation(
         workspace_id=uuid4(),

@@ -28,7 +28,7 @@ class SpecialistToolCall(BaseModel):
     purpose: str
 
 
-class CapabilityGap(BaseModel):
+class SpecialistCapabilityGap(BaseModel):
     """A capability missing from the approved registry."""
 
     name: str
@@ -55,7 +55,7 @@ class SpecialistStep(BaseModel):
 
     final_result: SpecialistInvestigationResult | None = None
 
-    capability_gap: CapabilityGap | None = None
+    capability_gap: SpecialistCapabilityGap | None = None
 
     def validate_selected_payload(self) -> None:
         """Validate the payload required for the selected step."""

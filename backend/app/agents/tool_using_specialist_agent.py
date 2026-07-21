@@ -6,7 +6,7 @@ from typing import Any
 
 from app.agents.model_client import StructuredModelClient
 from app.models import (
-    CapabilityGap,
+    SpecialistCapabilityGap,
     Investigation,
     SpecialistInvestigationResult,
     SpecialistStep,
@@ -23,7 +23,7 @@ class SpecialistCapabilityGapError(RuntimeError):
         self,
         *,
         specialist_name: str,
-        capability_gap: CapabilityGap,
+        capability_gap: SpecialistCapabilityGap,
     ) -> None:
         self.specialist_name = specialist_name
         self.capability_gap = capability_gap

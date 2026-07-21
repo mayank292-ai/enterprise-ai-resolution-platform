@@ -4,14 +4,15 @@ from datetime import datetime, timezone
 from enum import Enum
 from typing import Any
 from uuid import UUID, uuid4
+
+from pydantic import BaseModel, Field, model_validator
+
 from app.models.investigation_outputs import (
     HypothesisUpdate,
     InvestigationFinding,
     SpecialistAssignmentOutcome,
     TrustedToolExecution,
 )
-from pydantic import BaseModel, Field
-
 
 class InvestigationStatus(str, Enum):
     """Lifecycle states of an investigation."""
@@ -20,6 +21,9 @@ class InvestigationStatus(str, Enum):
     PLANNING = "planning"
     INVESTIGATING = "investigating"
     VERIFYING = "verifying"
+    AWAITING_CAPABILITY_APPROVAL = (
+        "awaiting_capability_approval"
+    )
     COMPLETED = "completed"
     FAILED = "failed"
 
@@ -49,20 +53,38 @@ class SupervisorConfidence(str, Enum):
     MODERATE = "moderate"
     HIGH = "high"
 
+
 class SupervisorActionType(str, Enum):
     """Actions the supervisor may choose during an investigation."""
 
     DELEGATE = "delegate"
     VERIFY = "verify"
+    CAPABILITY_GAP = "capability_gap"
     COMPLETE = "complete"
+
+
+class CapabilityGapStatus(str, Enum):
+    """Lifecycle states of a discovered capability gap."""
+
+    PROPOSED = "proposed"
+    APPROVED = "approved"
+    REJECTED = "rejected"
+    CREATING = "creating"
+    READY = "ready"
 
 
 class InvestigationRequest(BaseModel):
     """Request submitted by a user to begin an investigation."""
 
     workspace_id: UUID
-    incident_title: str = Field(min_length=3, max_length=200)
-    incident_description: str = Field(min_length=10, max_length=10_000)
+    incident_title: str = Field(
+        min_length=3,
+        max_length=200,
+    )
+    incident_description: str = Field(
+        min_length=10,
+        max_length=10_000,
+    )
 
 
 class InvestigationClassification(BaseModel):
@@ -80,8 +102,12 @@ class Hypothesis(BaseModel):
     hypothesis_id: UUID = Field(default_factory=uuid4)
     statement: str
     status: str = "open"
-    supporting_evidence_ids: list[UUID] = Field(default_factory=list)
-    contradicting_evidence_ids: list[UUID] = Field(default_factory=list)
+    supporting_evidence_ids: list[UUID] = Field(
+        default_factory=list
+    )
+    contradicting_evidence_ids: list[UUID] = Field(
+        default_factory=list
+    )
 
 
 class Evidence(BaseModel):
@@ -123,6 +149,54 @@ class AgentDecision(BaseModel):
     completed_at: datetime | None = None
 
 
+class CapabilityGapProposal(BaseModel):
+    """Capability missing from the current specialist registry."""
+
+    title: str
+    missing_capability: str
+    reason: str
+
+    proposed_agent_name: str
+    proposed_agent_description: str
+
+    required_tools: list[str] = Field(
+        default_factory=list
+    )
+
+    resume_objective: str
+
+
+class CapabilityGap(BaseModel):
+    """Persisted capability gap awaiting human review."""
+
+    capability_gap_id: UUID = Field(
+        default_factory=uuid4
+    )
+
+    title: str
+    missing_capability: str
+    reason: str
+
+    proposed_agent_name: str
+    proposed_agent_description: str
+
+    required_tools: list[str] = Field(
+        default_factory=list
+    )
+
+    resume_objective: str
+
+    status: CapabilityGapStatus = (
+        CapabilityGapStatus.PROPOSED
+    )
+
+    created_at: datetime = Field(
+        default_factory=lambda: datetime.now(timezone.utc)
+    )
+
+    resolved_at: datetime | None = None
+
+
 class SupervisorAction(BaseModel):
     """Structured next action selected by the supervisor model."""
 
@@ -131,8 +205,72 @@ class SupervisorAction(BaseModel):
     objective: str | None = None
     reason: str
     confidence: SupervisorConfidence
-    updated_hypotheses: list[str] = Field(default_factory=list)
-    evidence_needed: list[str] = Field(default_factory=list)
+
+    updated_hypotheses: list[str] = Field(
+        default_factory=list
+    )
+
+    evidence_needed: list[str] = Field(
+        default_factory=list
+    )
+
+    capability_gap: CapabilityGapProposal | None = None
+
+    @model_validator(mode="after")
+    def validate_action_fields(
+        self,
+    ) -> "SupervisorAction":
+        """Validate fields required by each action type."""
+
+        if self.action_type in {
+            SupervisorActionType.DELEGATE,
+            SupervisorActionType.VERIFY,
+        }:
+            if not self.agent_name:
+                raise ValueError(
+                    "agent_name is required for delegate "
+                    "and verify actions."
+                )
+
+            if not self.objective:
+                raise ValueError(
+                    "objective is required for delegate "
+                    "and verify actions."
+                )
+
+            if self.capability_gap is not None:
+                raise ValueError(
+                    "capability_gap must not be provided for "
+                    "delegate or verify actions."
+                )
+
+        elif (
+            self.action_type
+            == SupervisorActionType.CAPABILITY_GAP
+        ):
+            if self.capability_gap is None:
+                raise ValueError(
+                    "capability_gap is required for a "
+                    "capability-gap action."
+                )
+
+            if self.agent_name is not None:
+                raise ValueError(
+                    "agent_name must not be provided for a "
+                    "capability-gap action."
+                )
+
+        elif (
+            self.action_type
+            == SupervisorActionType.COMPLETE
+        ):
+            if self.capability_gap is not None:
+                raise ValueError(
+                    "capability_gap must not be provided for "
+                    "a complete action."
+                )
+
+        return self
 
 
 class RootCause(BaseModel):
@@ -141,7 +279,9 @@ class RootCause(BaseModel):
     title: str
     explanation: str
     confidence: EvidenceConfidence
-    evidence_ids: list[UUID] = Field(default_factory=list)
+    evidence_ids: list[UUID] = Field(
+        default_factory=list
+    )
 
 
 class BusinessImpact(BaseModel):
@@ -150,7 +290,9 @@ class BusinessImpact(BaseModel):
     affected_records: int = 0
     affected_value: float = 0.0
     currency: str = "USD"
-    affected_systems: list[str] = Field(default_factory=list)
+    affected_systems: list[str] = Field(
+        default_factory=list
+    )
     earliest_occurrence: datetime | None = None
 
 
@@ -175,16 +317,30 @@ class CapabilityOpportunity(BaseModel):
 class Investigation(BaseModel):
     """Complete durable state of an enterprise investigation."""
 
-    investigation_id: UUID = Field(default_factory=uuid4)
+    investigation_id: UUID = Field(
+        default_factory=uuid4
+    )
     workspace_id: UUID
     incident_title: str
     incident_description: str
-    status: InvestigationStatus = InvestigationStatus.CREATED
+    status: InvestigationStatus = (
+        InvestigationStatus.CREATED
+    )
 
     classification: InvestigationClassification | None = None
-    hypotheses: list[Hypothesis] = Field(default_factory=list)
-    agent_decisions: list[AgentDecision] = Field(default_factory=list)
-    evidence: list[Evidence] = Field(default_factory=list)
+
+    hypotheses: list[Hypothesis] = Field(
+        default_factory=list
+    )
+
+    agent_decisions: list[AgentDecision] = Field(
+        default_factory=list
+    )
+
+    evidence: list[Evidence] = Field(
+        default_factory=list
+    )
+
     findings: list[InvestigationFinding] = Field(
         default_factory=list
     )
@@ -212,17 +368,31 @@ class Investigation(BaseModel):
     ] = Field(
         default_factory=list
     )
+
+    pending_capability_gap: CapabilityGap | None = None
+
     root_cause: RootCause | None = None
     business_impact: BusinessImpact | None = None
-    recommendations: list[Recommendation] = Field(default_factory=list)
-    executive_summary: list[str] = Field(default_factory=list)
-    capability_opportunity: CapabilityOpportunity | None = None
+
+    recommendations: list[Recommendation] = Field(
+        default_factory=list
+    )
+
+    executive_summary: list[str] = Field(
+        default_factory=list
+    )
+
+    capability_opportunity: (
+        CapabilityOpportunity | None
+    ) = None
 
     created_at: datetime = Field(
         default_factory=lambda: datetime.now(timezone.utc)
     )
+
     updated_at: datetime = Field(
         default_factory=lambda: datetime.now(timezone.utc)
     )
+
     completed_at: datetime | None = None
     error_message: str | None = None

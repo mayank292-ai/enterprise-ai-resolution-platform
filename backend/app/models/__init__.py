@@ -15,6 +15,9 @@ from app.models.investigation import (
     SupervisorAction,
     SupervisorActionType,
     SupervisorConfidence,
+    CapabilityGap,
+    CapabilityGapStatus,
+    CapabilityGapProposal,
 )
 from app.models.investigation_outputs import (
     HypothesisUpdate,
@@ -28,7 +31,7 @@ from app.models.specialist_result import (
     SpecialistInvestigationResult,  
 )
 from app.models.specialist_step import (
-    CapabilityGap,
+    SpecialistCapabilityGap,
     SpecialistStep,
     SpecialistStepType,
     SpecialistToolCall,
@@ -57,9 +60,12 @@ __all__ = [
     "SpecialistInvestigationResult",
     "ToolExecution",
     "CapabilityGap",
+    "CapabilityGapStatus",
     "SpecialistStep",
+    "SpecialistCapabilityGap",
     "SpecialistStepType",
     "SpecialistToolCall",
     "TrustedToolExecution",
     "SpecialistAssignmentOutcome",
+    "CapabilityGapProposal",
 ]

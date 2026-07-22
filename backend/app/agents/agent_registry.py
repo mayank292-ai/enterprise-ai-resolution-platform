@@ -19,7 +19,6 @@ class AgentCapability:
             f"  - {objective}"
             for objective in self.supported_objectives
         )
-
         return (
             f"Agent name: {self.name}\n"
             f"Display name: {self.display_name}\n"
@@ -34,23 +33,16 @@ class AgentRegistry:
     def __init__(self) -> None:
         self._capabilities: dict[str, AgentCapability] = {}
 
-    def register(
-        self,
-        capability: AgentCapability,
-    ) -> None:
+    def register(self, capability: AgentCapability) -> None:
         """Register one specialist-agent capability."""
 
         if capability.name in self._capabilities:
             raise ValueError(
                 f"Agent '{capability.name}' is already registered."
             )
-
         self._capabilities[capability.name] = capability
 
-    def get(
-        self,
-        agent_name: str,
-    ) -> AgentCapability | None:
+    def get(self, agent_name: str) -> AgentCapability | None:
         """Return one registered capability."""
 
         return self._capabilities.get(agent_name)
@@ -60,10 +52,7 @@ class AgentRegistry:
 
         return list(self._capabilities.values())
 
-    def contains(
-        self,
-        agent_name: str,
-    ) -> bool:
+    def contains(self, agent_name: str) -> bool:
         """Check whether an agent is registered."""
 
         return agent_name in self._capabilities
@@ -78,157 +67,71 @@ class AgentRegistry:
 
 
 def create_default_agent_registry() -> AgentRegistry:
-    """Create the initial specialist-agent registry."""
+    """Create the registry of executable permanent specialists."""
 
     registry = AgentRegistry()
-
     registry.register(
         AgentCapability(
             name="payment_investigation_agent",
             display_name="Payment Investigation Agent",
             description=(
-                "Investigates payment lifecycle events, statuses, "
-                "amounts, currencies, processing stages, and downstream "
-                "publication outcomes."
+                "Scopes affected payments, reconstructs lifecycle behavior, "
+                "and compares successful and unsuccessful cohorts."
             ),
             supported_objectives=(
                 "Identify the affected payment population.",
-                "Reconstruct the lifecycle of selected payments.",
-                "Compare successful and unsuccessful payment cohorts.",
-                "Inspect downstream publication and settlement states.",
+                "Reconstruct representative payment lifecycles.",
+                "Compare successful and unsuccessful cohorts.",
+                "Assess payment value, currency and downstream impact.",
             ),
         )
     )
-
     registry.register(
         AgentCapability(
-            name="fx_investigation_agent",
-            display_name="FX Investigation Agent",
+            name="pipeline_reliability_agent",
+            display_name="Pipeline Reliability Agent",
             description=(
-                "Investigates foreign-exchange enrichment, conversion "
-                "requests, conversion inputs, rates, converted amounts, "
-                "and FX processing outcomes."
+                "Investigates orchestration, ingestion, transformation "
+                "execution, task failures and record-count reconciliation."
             ),
             supported_objectives=(
-                "Inspect conversion attempts for affected payments.",
-                "Determine whether required FX inputs were available.",
-                "Compare successful and failed conversion cohorts.",
-                "Identify incomplete or inconsistent FX enrichment.",
+                "Determine whether pipeline execution failed.",
+                "Inspect run and task health.",
+                "Reconcile expected, received and processed counts.",
+                "Rule orchestration or data movement in or out.",
             ),
         )
     )
-
     registry.register(
         AgentCapability(
-            name="reference_data_agent",
-            display_name="Reference Data Agent",
+            name="data_contract_agent",
+            display_name="Data Contract Agent",
             description=(
-                "Investigates currency reference data, supported currency "
-                "pairs, exchange-rate availability, validity periods, and "
-                "reference-data publication."
+                "Investigates source schemas, canonical contracts, required "
+                "fields, field mappings and transformed records."
             ),
             supported_objectives=(
-                "Confirm whether required exchange rates existed.",
-                "Validate currency-pair support.",
-                "Check reference-data validity and publication timing.",
-                "Eliminate reference-data availability as a hypothesis.",
+                "Compare source and canonical schema versions.",
+                "Inspect source-to-canonical field mappings.",
+                "Identify missing required attributes after transformation.",
+                "Establish whether a data-contract defect exists.",
             ),
         )
     )
-
-    registry.register(
-        AgentCapability(
-            name="data_quality_agent",
-            display_name="Data Quality Agent",
-            description=(
-                "Investigates data-quality executions, failed controls, "
-                "record-level exceptions, completeness issues, and "
-                "failure trends."
-            ),
-            supported_objectives=(
-                "Identify controls failed by the affected population.",
-                "Inspect record-level data-quality exceptions.",
-                "Compare current failures with historical baselines.",
-                "Determine which validation blocked downstream processing.",
-            ),
-        )
-    )
-
-    registry.register(
-        AgentCapability(
-            name="change_analysis_agent",
-            display_name="Change Analysis Agent",
-            description=(
-                "Investigates deployments, producer versions, schema "
-                "changes, field mappings, and configuration changes."
-            ),
-            supported_objectives=(
-                "Identify changes preceding the incident.",
-                "Compare schema versions and attribute paths.",
-                "Inspect mapping compatibility.",
-                "Correlate deployments with the beginning of failures.",
-            ),
-        )
-    )
-
     registry.register(
         AgentCapability(
             name="verification_agent",
             display_name="Verification Agent",
             description=(
                 "Challenges proposed conclusions, searches for conflicting "
-                "evidence, validates affected populations, and confirms "
-                "whether the evidence sufficiently supports the root cause."
+                "evidence and validates whether root cause is supported."
             ),
             supported_objectives=(
                 "Search for contradictory evidence.",
                 "Validate the proposed root cause.",
                 "Verify impact calculations.",
-                "Determine whether the investigation can be concluded.",
+                "Determine whether the investigation can conclude.",
             ),
         )
     )
-
-    return registry
-def create_payment_agent_registry() -> AgentRegistry:
-    """Create the supervisor registry for currently executable agents."""
-
-    registry = AgentRegistry()
-
-    registry.register(
-        AgentCapability(
-            name="payment_investigation_agent",
-            display_name="Payment Investigation Agent",
-            description=(
-                "Investigates payment lifecycle events, statuses, "
-                "amounts, currencies, processing stages, and downstream "
-                "publication outcomes."
-            ),
-            supported_objectives=(
-                "Identify the affected payment population.",
-                "Reconstruct the lifecycle of selected payments.",
-                "Compare successful and unsuccessful payment cohorts.",
-                "Inspect downstream publication and settlement states.",
-            ),
-        )
-    )
-
-    registry.register(
-        AgentCapability(
-            name="verification_agent",
-            display_name="Verification Agent",
-            description=(
-                "Challenges proposed conclusions, searches for conflicting "
-                "evidence, validates affected populations, and confirms "
-                "whether the evidence sufficiently supports the root cause."
-            ),
-            supported_objectives=(
-                "Search for contradictory evidence.",
-                "Validate the proposed root cause.",
-                "Verify impact calculations.",
-                "Determine whether the investigation can be concluded.",
-            ),
-        )
-    )
-
     return registry

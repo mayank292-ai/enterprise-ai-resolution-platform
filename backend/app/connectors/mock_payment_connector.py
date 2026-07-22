@@ -93,7 +93,7 @@ class MockPaymentConnector:
 
     @staticmethod
     def _build_payments() -> dict[str, dict[str, Any]]:
-        """Build a small but meaningful payment investigation dataset."""
+        """Build payment evidence that exposes symptoms, not root cause."""
 
         return {
             "PAY-20260718-1042": {
@@ -105,7 +105,7 @@ class MockPaymentConnector:
                 "processing_status": "COMPLETED",
                 "settlement_status": "PENDING",
                 "publication_status": "FAILED",
-                "source_currency": None,
+                "source_currency": "GBP",
                 "instructed_currency": "GBP",
                 "producer_version": "4.8.0",
                 "lifecycle": [
@@ -126,15 +126,14 @@ class MockPaymentConnector:
                     },
                     {
                         "stage": "FX_ENRICHMENT",
-                        "status": "FAILED",
+                        "status": "COMPLETED",
                         "timestamp": "2026-07-18T08:07:05Z",
-                        "reason": "sourceCurrency is missing",
                     },
                     {
                         "stage": "PUBLICATION",
                         "status": "FAILED",
-                        "timestamp": "2026-07-18T08:07:06Z",
-                        "reason": "Mandatory FX attributes are incomplete",
+                        "timestamp": "2026-07-18T08:07:36Z",
+                        "reason": "DOWNSTREAM_ACK_TIMEOUT",
                     },
                 ],
             },
@@ -147,7 +146,7 @@ class MockPaymentConnector:
                 "processing_status": "COMPLETED",
                 "settlement_status": "PENDING",
                 "publication_status": "FAILED",
-                "source_currency": None,
+                "source_currency": "EUR",
                 "instructed_currency": "EUR",
                 "producer_version": "4.8.0",
                 "lifecycle": [
@@ -168,15 +167,14 @@ class MockPaymentConnector:
                     },
                     {
                         "stage": "FX_ENRICHMENT",
-                        "status": "FAILED",
+                        "status": "COMPLETED",
                         "timestamp": "2026-07-18T08:09:05Z",
-                        "reason": "sourceCurrency is missing",
                     },
                     {
                         "stage": "PUBLICATION",
                         "status": "FAILED",
-                        "timestamp": "2026-07-18T08:09:06Z",
-                        "reason": "Mandatory FX attributes are incomplete",
+                        "timestamp": "2026-07-18T08:09:35Z",
+                        "reason": "DOWNSTREAM_ACK_TIMEOUT",
                     },
                 ],
             },
@@ -189,7 +187,7 @@ class MockPaymentConnector:
                 "processing_status": "COMPLETED",
                 "settlement_status": "PENDING",
                 "publication_status": "FAILED",
-                "source_currency": None,
+                "source_currency": "CHF",
                 "instructed_currency": "CHF",
                 "producer_version": "4.8.0",
                 "lifecycle": [
@@ -210,15 +208,14 @@ class MockPaymentConnector:
                     },
                     {
                         "stage": "FX_ENRICHMENT",
-                        "status": "FAILED",
+                        "status": "COMPLETED",
                         "timestamp": "2026-07-18T08:11:05Z",
-                        "reason": "sourceCurrency is missing",
                     },
                     {
                         "stage": "PUBLICATION",
                         "status": "FAILED",
-                        "timestamp": "2026-07-18T08:11:06Z",
-                        "reason": "Mandatory FX attributes are incomplete",
+                        "timestamp": "2026-07-18T08:11:35Z",
+                        "reason": "DOWNSTREAM_ACK_TIMEOUT",
                     },
                 ],
             },

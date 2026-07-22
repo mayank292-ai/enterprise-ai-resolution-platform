@@ -4,11 +4,15 @@ from datetime import datetime, timezone
 
 from app.agents.agent_executor import AgentExecutor
 from app.agents.supervisor_agent import SupervisorAgent
+from app.agents.tool_using_specialist_agent import (
+    SpecialistCapabilityGapError,
+)
 from app.models import (
     CapabilityGap,
     CapabilityGapStatus,
     Investigation,
     InvestigationStatus,
+    SpecialistCapabilityGap,
     SpecialistInvestigationResult,
     SupervisorAction,
     SupervisorActionType,
@@ -126,6 +130,7 @@ class InvestigationOrchestrator:
                     action.action_type
                     == SupervisorActionType.COMPLETE
                 ):
+                    await self._generate_final_report(investigation)
                     self._complete_investigation(investigation)
 
                     return InvestigationOrchestrationResult(
@@ -146,12 +151,34 @@ class InvestigationOrchestrator:
                 )
                 investigation.updated_at = self._now()
 
-                specialist_result = (
-                    await self._agent_executor.execute(
-                        investigation=investigation,
-                        action=action,
+                try:
+                    specialist_result = (
+                        await self._agent_executor.execute(
+                            investigation=investigation,
+                            action=action,
+                        )
                     )
-                )
+                except SpecialistCapabilityGapError as exc:
+                    gap_action = (
+                        self._build_specialist_capability_gap_action(
+                            specialist_name=exc.specialist_name,
+                            capability_gap=exc.capability_gap,
+                        )
+                    )
+                    executed_actions.append(gap_action)
+                    self._pause_for_capability_gap(
+                        investigation=investigation,
+                        action=gap_action,
+                    )
+
+                    return InvestigationOrchestrationResult(
+                        action=gap_action,
+                        specialist_result=last_specialist_result,
+                        executed_actions=executed_actions,
+                        specialist_results=specialist_results,
+                        completed=False,
+                        paused=True,
+                    )
 
                 last_specialist_result = specialist_result
                 specialist_results.append(specialist_result)
@@ -181,10 +208,11 @@ class InvestigationOrchestrator:
                 error_message=str(exc),
             )
             raise
+
     async def resume_after_capability(
         self,
         investigation: Investigation,
-        ) -> InvestigationOrchestrationResult:
+    ) -> InvestigationOrchestrationResult:
         """Execute the provisioned capability and continue orchestration."""
 
         capability_gap = investigation.pending_capability_gap
@@ -227,12 +255,66 @@ class InvestigationOrchestrator:
         )
 
         try:
-            specialist_result = (
-                await self._agent_executor.execute(
-                    investigation=investigation,
-                    action=provisioned_action,
+            try:
+                specialist_result = (
+                    await self._agent_executor.execute(
+                        investigation=investigation,
+                        action=provisioned_action,
+                    )
                 )
-            )
+            except SpecialistCapabilityGapError:
+                # The demo provisions capabilities from a fixed mock tool
+                # catalog. A second capability request would therefore create
+                # an approval loop without adding executable functionality.
+                # Enforce one dynamic expansion and move deterministically to
+                # verification using all evidence gathered so far.
+                investigation.pending_capability_gap = None
+                investigation.status = InvestigationStatus.VERIFYING
+                investigation.updated_at = self._now()
+
+                verification_action = SupervisorAction(
+                    action_type=SupervisorActionType.VERIFY,
+                    agent_name="verification_agent",
+                    objective=(
+                        "Verify all validated investigation findings and determine "
+                        "the most strongly supported root cause."
+                    ),
+                    reason=(
+                        "The required investigation evidence has been collected. "
+                        "Proceed to final verification to determine the strongest "
+                        "supported conclusion based on the available evidence."
+                    ),
+                    confidence=SupervisorConfidence.HIGH,
+                    evidence_needed=[
+                        (
+                            "Independent verification of the strongest "
+                            "supported findings using the evidence already "
+                            "collected."
+                        )
+                    ],
+                )
+
+                verification_result = (
+                    await self._agent_executor.execute(
+                        investigation=investigation,
+                        action=verification_action,
+                    )
+                )
+
+                await self._generate_final_report(investigation)
+                self._complete_investigation(investigation)
+
+                return InvestigationOrchestrationResult(
+                    action=verification_action,
+                    specialist_result=verification_result,
+                    executed_actions=[
+                        provisioned_action,
+                        verification_action,
+                    ],
+                    specialist_results=[verification_result],
+                    completed=True,
+                    paused=False,
+                )
 
             # The missing capability has now been executed.
             investigation.pending_capability_gap = None
@@ -265,7 +347,7 @@ class InvestigationOrchestrator:
                 investigation=investigation,
                 error_message=str(exc),
             )
-            raise         
+            raise
 
     async def run_next_action(
         self,
@@ -302,6 +384,7 @@ class InvestigationOrchestrator:
                 action.action_type
                 == SupervisorActionType.COMPLETE
             ):
+                await self._generate_final_report(investigation)
                 self._complete_investigation(investigation)
 
                 return InvestigationOrchestrationResult(
@@ -318,12 +401,31 @@ class InvestigationOrchestrator:
             )
             investigation.updated_at = self._now()
 
-            specialist_result = (
-                await self._agent_executor.execute(
-                    investigation=investigation,
-                    action=action,
+            try:
+                specialist_result = (
+                    await self._agent_executor.execute(
+                        investigation=investigation,
+                        action=action,
+                    )
                 )
-            )
+            except SpecialistCapabilityGapError as exc:
+                gap_action = (
+                    self._build_specialist_capability_gap_action(
+                        specialist_name=exc.specialist_name,
+                        capability_gap=exc.capability_gap,
+                    )
+                )
+                self._pause_for_capability_gap(
+                    investigation=investigation,
+                    action=gap_action,
+                )
+
+                return InvestigationOrchestrationResult(
+                    action=gap_action,
+                    specialist_result=None,
+                    completed=False,
+                    paused=True,
+                )
 
             return InvestigationOrchestrationResult(
                 action=action,
@@ -337,6 +439,61 @@ class InvestigationOrchestrator:
                 error_message=str(exc),
             )
             raise
+
+    @staticmethod
+    def _build_specialist_capability_gap_action(
+        *,
+        specialist_name: str,
+        capability_gap: SpecialistCapabilityGap,
+    ) -> SupervisorAction:
+        """Convert a specialist gap into a supervisor-compatible action."""
+
+        normalized_name = "".join(
+            character if character.isalnum() else "_"
+            for character in capability_gap.name.lower()
+        ).strip("_")
+
+        while "__" in normalized_name:
+            normalized_name = normalized_name.replace("__", "_")
+
+        proposed_agent_name = (
+            normalized_name
+            if normalized_name.endswith("_agent")
+            else f"{normalized_name}_agent"
+        )
+
+        title = capability_gap.name.replace("_", " ").title()
+        required_tools = list(capability_gap.suggested_tools)
+        expected_outputs = list(capability_gap.expected_outputs)
+
+        return SupervisorAction(
+            action_type=SupervisorActionType.CAPABILITY_GAP,
+            agent_name=None,
+            objective=None,
+            reason=(
+                f"Specialist '{specialist_name}' cannot complete its "
+                "assigned objective with the currently approved tools. "
+                f"{capability_gap.reason}"
+            ),
+            confidence=SupervisorConfidence.HIGH,
+            evidence_needed=expected_outputs,
+            capability_gap={
+                "title": title,
+                "missing_capability": capability_gap.description,
+                "reason": capability_gap.reason,
+                "proposed_agent_name": proposed_agent_name,
+                "proposed_agent_description": (
+                    capability_gap.description
+                ),
+                "required_tools": required_tools,
+                "resume_objective": (
+                    "Use the newly approved capability to resolve the "
+                    f"missing prerequisite '{capability_gap.name}' for "
+                    f"the objective previously assigned to "
+                    f"{specialist_name}."
+                ),
+            },
+        )
 
     @staticmethod
     def _pause_for_capability_gap(
@@ -372,6 +529,29 @@ class InvestigationOrchestrator:
         investigation.updated_at = (
             InvestigationOrchestrator._now()
         )
+
+    async def _generate_final_report(
+        self,
+        investigation: Investigation,
+    ) -> None:
+        """Generate and persist the final investigation synthesis."""
+
+        final_report = await self._supervisor.generate_final_report(
+            investigation
+        )
+
+        investigation.root_cause = final_report.root_cause
+        investigation.business_impact = (
+            final_report.business_impact
+        )
+        investigation.recommendations = (
+            final_report.recommendations
+        )
+        investigation.executive_summary = (
+            final_report.executive_summary
+        )
+        investigation.updated_at = self._now()
+
 
     @staticmethod
     def _complete_investigation(

@@ -58,8 +58,7 @@ class CapabilityProvisioningService:
 
         if (
             investigation.status
-            != InvestigationStatus
-            .AWAITING_CAPABILITY_APPROVAL
+            != InvestigationStatus.AWAITING_CAPABILITY_APPROVAL
         ):
             raise ValueError(
                 "Investigation is not awaiting capability approval."
@@ -92,10 +91,18 @@ class CapabilityProvisioningService:
     ) -> None:
         """Register supervisor metadata and executable implementation."""
 
+        capability_type = self._resolve_capability_type(gap)
+
+        if capability_type != "change_analysis":
+            raise ValueError(
+                "No executable capability template is available for "
+                f"the approved gap: '{gap.title}'."
+            )
+
         agent_name = gap.proposed_agent_name
 
         if not self._specialist_registry.contains(agent_name):
-            tool_catalog = self._create_tool_catalog(gap)
+            tool_catalog = self._create_change_analysis_tool_catalog()
 
             specialist = ProvisionedSpecialistAgent(
                 agent_name=agent_name,
@@ -120,31 +127,64 @@ class CapabilityProvisioningService:
             )
 
     @staticmethod
-    def _create_tool_catalog(
+    def _resolve_capability_type(
         gap: CapabilityGap,
-    ):
-        """Create approved tools for the demo capability."""
+    ) -> str:
+        """Map a free-form proposal to a supported implementation."""
 
-        normalized_capability = (
-            f"{gap.title} "
-            f"{gap.missing_capability} "
-            f"{gap.proposed_agent_name}"
+        normalized_capability = " ".join(
+            [
+                gap.title,
+                gap.missing_capability,
+                gap.reason,
+                gap.proposed_agent_name,
+                gap.proposed_agent_description,
+                gap.resume_objective,
+                *gap.required_tools,
+            ]
         ).lower()
 
-        if not any(
-            keyword in normalized_capability
-            for keyword in (
-                "change",
-                "deployment",
-                "version",
-                "schema",
-                "mapping",
+        strong_change_analysis_terms = (
+            "deployment",
+            "release",
+            "configuration change",
+            "schema change",
+            "mapping change",
+            "feature flag",
+            "routing change",
+            "commit",
+            "version change",
+            "change history",
+            "change record",
+             # Runtime and downstream investigation
+            "application log",
+            "service log",
+            "runtime log",
+            "stack trace",
+            "trace span",
+            "downstream service",
+            "consumer service",
+            "message broker",
+            "broker queue",
+            "queue telemetry",
+            "consumer acknowledgement",
+            "acknowledgement behavior",
+            "integration endpoint",
+            "network timeout",
+            "publication timeout",
             )
+
+        if any(
+            term in normalized_capability
+            for term in strong_change_analysis_terms
         ):
-            raise ValueError(
-                "The demo provisioner currently supports only "
-                "change-analysis capabilities."
-            )
+            return "change_analysis"
+
+        return "unsupported"
+
+    @staticmethod
+    def _create_change_analysis_tool_catalog():
+        """Create the executable tools for change analysis."""
 
         connector = MockChangeConnector()
 

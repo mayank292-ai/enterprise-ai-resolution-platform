@@ -57,6 +57,25 @@ def get_demo_investigation() -> Investigation:
     return create_demo_investigation()
 
 
+@router.post(
+    "/demo/reset",
+    response_model=dict[str, object],
+)
+def reset_demo_runtime() -> dict[str, object]:
+    """Reset the in-memory demo runtime."""
+
+    global runtime
+
+    runtime = create_runtime()
+
+    return {
+        "status": "reset",
+        "permanent_agents": (
+            runtime.specialist_registry.list_names()
+        ),
+    }
+
+
 @router.get(
     "/{investigation_id}",
     response_model=Investigation,

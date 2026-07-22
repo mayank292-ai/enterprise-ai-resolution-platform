@@ -5,7 +5,7 @@ from dataclasses import dataclass
 from app.agents.agent_executor import AgentExecutor
 from app.agents.agent_registry import (
     AgentRegistry,
-    create_payment_agent_registry,
+    create_default_agent_registry,
 )
 from app.agents.gemini_model_client import GeminiModelClient
 from app.agents.model_client import StructuredModelClient
@@ -41,10 +41,7 @@ def create_runtime() -> ApplicationRuntime:
 
     model_client: StructuredModelClient = GeminiModelClient()
 
-    # Temporary restricted supervisor registry.
-    # Replace with create_default_agent_registry() once all default
-    # advertised agents have executable implementations.
-    supervisor_registry = create_payment_agent_registry()
+    supervisor_registry = create_default_agent_registry()
 
     specialist_registry = create_default_specialist_registry(
         model_client=model_client,

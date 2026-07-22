@@ -5,6 +5,9 @@ from datetime import datetime, timezone
 from app.agents.specialist_agent_registry import (
     SpecialistAgentRegistry,
 )
+from app.agents.tool_using_specialist_agent import (
+    SpecialistCapabilityGapError,
+)
 from app.models import (
     AgentDecision,
     AgentExecutionStatus,
@@ -81,6 +84,15 @@ class AgentExecutor:
                 objective=action.objective,
                 evidence_needed=action.evidence_needed,
             )
+        except SpecialistCapabilityGapError:
+            # A capability gap is a valid orchestration outcome. The
+            # orchestrator will convert it into a governed pause.
+            decision.status = AgentExecutionStatus.COMPLETED
+            decision.completed_at = datetime.now(timezone.utc)
+            investigation.updated_at = datetime.now(
+                timezone.utc
+            )
+            raise
         except Exception:
             decision.status = AgentExecutionStatus.FAILED
             decision.completed_at = datetime.now(timezone.utc)

@@ -4,7 +4,7 @@ from typing import Any
 
 
 class MockChangeConnector:
-    """Provide deterministic change-history data for the demo."""
+    """Provide deterministic deployment evidence for the demo."""
 
     async def get_recent_deployments(
         self,
@@ -34,7 +34,7 @@ class MockChangeConnector:
         service_name: str,
         version: str,
     ) -> dict[str, Any] | None:
-        """Return the relevant changes introduced by a version."""
+        """Return behavioral and configuration changes in one version."""
 
         if (
             service_name != "payment-producer"
@@ -49,15 +49,31 @@ class MockChangeConnector:
             "change_ticket": "CHG-4821",
             "changes": [
                 {
-                    "component": "payment-attribute-mapping",
-                    "field": "source_currency",
-                    "change_type": "mapping_removed",
-                    "replacement_field": "instructed_currency",
-                    "downstream_contract_updated": False,
-                }
+                    "component": "settlement-routing",
+                    "change_type": "feature_flag_enabled",
+                    "feature_flag": "use_new_settlement_route",
+                    "previous_value": False,
+                    "new_value": True,
+                    "scope": "cross_border_corporate_payments",
+                },
+                {
+                    "component": "settlement-routing",
+                    "change_type": "configuration_changed",
+                    "configuration_key": "settlement_destination_queue",
+                    "previous_value": "settlement-primary-v1",
+                    "new_value": "settlement-next-v2",
+                },
             ],
+            "observed_runtime_effect": {
+                "destination_queue": "settlement-next-v2",
+                "queue_status": "INACTIVE",
+                "acknowledgement_received": False,
+                "affected_payment_versions": ["4.8.0"],
+            },
             "validation_results": {
-                "schema_compatibility_check_executed": False,
-                "downstream_mapping_test_executed": False,
+                "schema_compatibility_check_executed": True,
+                "schema_compatibility_check_status": "PASSED",
+                "routing_smoke_test_executed": False,
+                "production_queue_readiness_check_executed": False,
             },
         }

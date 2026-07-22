@@ -85,3 +85,7 @@ class InvestigationService:
             key=lambda investigation: investigation.updated_at,
             reverse=True,
         )
+    def clear(self) -> None:
+        """Remove all in-memory investigations for a deterministic demo reset."""
+
+        self._investigations.clear()

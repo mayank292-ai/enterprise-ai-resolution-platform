@@ -4,6 +4,8 @@
 
 **Status:** Completed 2026 TDI Global Hackathon project
 
+[![Continuous Integration](https://github.com/mayank292-ai/enterprise-ai-resolution-platform/actions/workflows/ci.yml/badge.svg)](https://github.com/mayank292-ai/enterprise-ai-resolution-platform/actions/workflows/ci.yml)
+
 ## Overview
 
 Enterprise incidents rarely stay within one system. A missing payment, delayed pipeline, schema change, or configuration issue can require several teams to collect evidence before anyone can identify the root cause.
@@ -23,7 +25,7 @@ The project demonstrates the complete investigation lifecycle—from incident in
 | Evidence verification | Findings, hypotheses, root cause, and business impact are assembled into a traceable investigation record. |
 | Capability-gap handling | Missing expertise can be identified, approved, provisioned, and used to resume an investigation. |
 | Investigation experience | The React interface supports intake, live progress, history, replay, analytics, knowledge, connections, and specialist views. |
-| Deployment support | Docker, Cloud Build, GitHub Actions, OpenShift, and Terraform assets are included. |
+| Deployment support | Docker, Cloud Build, and a manually triggered GitHub Actions deployment are included. |
 | Automated testing | Backend tests cover orchestration, specialists, tools, verification, workspaces, health, and demo behavior. |
 
 ## How it works
@@ -90,6 +92,7 @@ flowchart TD
 
 ```text
 enterprise-ai-resolution-platform/
+├── .github/workflows/     # Continuous integration and optional deployment
 ├── backend/
 │   ├── app/
 │   │   ├── agents/       # Supervisor and specialist implementations
@@ -102,8 +105,7 @@ enterprise-ai-resolution-platform/
 │   └── tests/
 ├── frontend/
 │   └── src/              # React application, pages, components, and API hooks
-├── openshift-api/        # OpenShift deployment example
-├── terraform/            # Infrastructure examples
+├── cloudbuild.yaml       # Container build and Cloud Run deployment pipeline
 └── README.md
 ```
 
@@ -115,7 +117,7 @@ enterprise-ai-resolution-platform/
 | Backend | Python, FastAPI, Pydantic, Google Gen AI SDK |
 | Frontend | React, TypeScript, Vite, Tailwind CSS, TanStack Query, Motion |
 | Testing | Pytest, HTTPX, pytest-asyncio |
-| Deployment | Docker, Google Cloud Build, GitHub Actions, OpenShift, Terraform |
+| Deployment | Docker, Google Cloud Build, GitHub Actions, Cloud Run |
 
 ## Run locally
 
@@ -166,6 +168,20 @@ cd frontend
 npm run lint
 npm run build
 ```
+
+The same backend and frontend checks run automatically for every push and pull request through GitHub Actions.
+
+## Optional Cloud Run deployment
+
+The manual deployment workflow builds both containers, deploys them through Google Cloud Build, and performs backend, frontend, and CORS smoke tests. Configure these GitHub repository variables before running it:
+
+- `GCP_PROJECT_ID`
+- `GCP_REGION`
+- `GCP_WORKLOAD_IDENTITY_PROVIDER`
+- `GCP_DEPLOY_SERVICE_ACCOUNT`
+- `GCP_RUNTIME_SERVICE_ACCOUNT`
+- `FRONTEND_ORIGIN`
+- `GEMINI_MODEL`
 
 ## Design principles
 

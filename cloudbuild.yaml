@@ -1,0 +1,324 @@
+substitutions:
+  _REGION: us-central1
+  _REPOSITORY: finsightai
+
+  _BACKEND_SERVICE: finsightai-backend
+  _FRONTEND_SERVICE: finsightai-frontend
+
+  _RUNTIME_SERVICE_ACCOUNT: workload@hack-team-finsightai.iam.gserviceaccount.com
+
+steps:
+  # =======================================================================
+  # 1. Build backend
+  # =======================================================================
+  - id: build-backend
+    name: gcr.io/cloud-builders/docker
+    args:
+      - build
+      - --pull
+      - --tag=${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_REPOSITORY}/backend:${COMMIT_SHA}
+      - --tag=${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_REPOSITORY}/backend:latest
+      - ./backend
+
+  # =======================================================================
+  # 2. Push backend commit image
+  # =======================================================================
+  - id: push-backend-commit
+    name: gcr.io/cloud-builders/docker
+    args:
+      - push
+      - ${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_REPOSITORY}/backend:${COMMIT_SHA}
+    waitFor:
+      - build-backend
+
+  # =======================================================================
+  # 3. Push backend latest image
+  # =======================================================================
+  - id: push-backend-latest
+    name: gcr.io/cloud-builders/docker
+    args:
+      - push
+      - ${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_REPOSITORY}/backend:latest
+    waitFor:
+      - build-backend
+
+  # =======================================================================
+  # 4. Deploy backend
+  # =======================================================================
+  - id: deploy-backend
+    name: gcr.io/google.com/cloudsdktool/cloud-sdk:slim
+    entrypoint: gcloud
+    args:
+      - run
+      - deploy
+      - ${_BACKEND_SERVICE}
+      - --image=${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_REPOSITORY}/backend:${COMMIT_SHA}
+      - --region=${_REGION}
+      - --platform=managed
+      - --service-account=${_RUNTIME_SERVICE_ACCOUNT}
+      - --allow-unauthenticated
+      - --port=8080
+      - --cpu=1
+      - --memory=1Gi
+      - --timeout=900
+      - --concurrency=20
+      - --min-instances=1
+      - --max-instances=1
+      - --env-vars-file=backend/cloudrun-env.yaml
+      - --quiet
+    waitFor:
+      - push-backend-commit
+
+  # =======================================================================
+  # 5. Retrieve actual backend Cloud Run URL
+  # =======================================================================
+  - id: get-backend-url
+    name: gcr.io/google.com/cloudsdktool/cloud-sdk:slim
+    entrypoint: bash
+    args:
+      - -c
+      - |
+        set -euo pipefail
+
+        BACKEND_URL="$$(gcloud run services describe "${_BACKEND_SERVICE}" \
+          --region="${_REGION}" \
+          --platform=managed \
+          --format='value(status.url)')"
+
+        if [[ -z "$${BACKEND_URL}" ]]; then
+          echo "Unable to determine backend Cloud Run URL."
+          exit 1
+        fi
+
+        printf '%s' "$${BACKEND_URL}" > /workspace/backend-url.txt
+
+        echo "Backend URL: $${BACKEND_URL}"
+    waitFor:
+      - deploy-backend
+
+  # =======================================================================
+  # 6. Test backend health
+  # =======================================================================
+  - id: backend-smoke-test
+    name: curlimages/curl
+    entrypoint: sh
+    args:
+      - -c
+      - |
+        set -eu
+
+        BACKEND_URL="$$(cat /workspace/backend-url.txt)"
+
+        echo "Testing backend: $${BACKEND_URL}/health"
+
+        curl \
+          --fail \
+          --show-error \
+          --silent \
+          --retry 10 \
+          --retry-delay 6 \
+          --retry-all-errors \
+          "$${BACKEND_URL}/health"
+
+        echo
+        echo "Backend health check passed."
+    waitFor:
+      - get-backend-url
+
+  # =======================================================================
+  # 7. Build frontend using actual backend URL
+  # =======================================================================
+  - id: build-frontend
+    name: gcr.io/cloud-builders/docker
+    entrypoint: bash
+    args:
+      - -c
+      - |
+        set -euo pipefail
+
+        BACKEND_URL="$$(cat /workspace/backend-url.txt)"
+
+        echo "Building frontend with backend URL: $${BACKEND_URL}"
+
+        docker build \
+          --pull \
+          --build-arg "VITE_API_BASE_URL=$${BACKEND_URL}" \
+          --tag="${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_REPOSITORY}/frontend:${COMMIT_SHA}" \
+          --tag="${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_REPOSITORY}/frontend:latest" \
+          ./frontend
+    waitFor:
+      - backend-smoke-test
+
+  # =======================================================================
+  # 8. Inspect frontend image
+  # =======================================================================
+  - id: inspect-frontend
+    name: gcr.io/cloud-builders/docker
+    args:
+      - image
+      - inspect
+      - ${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_REPOSITORY}/frontend:${COMMIT_SHA}
+    waitFor:
+      - build-frontend
+
+  # =======================================================================
+  # 9. Push frontend commit image
+  # =======================================================================
+  - id: push-frontend-commit
+    name: gcr.io/cloud-builders/docker
+    args:
+      - push
+      - ${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_REPOSITORY}/frontend:${COMMIT_SHA}
+    waitFor:
+      - inspect-frontend
+
+  # =======================================================================
+  # 10. Push frontend latest image
+  # =======================================================================
+  - id: push-frontend-latest
+    name: gcr.io/cloud-builders/docker
+    args:
+      - push
+      - ${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_REPOSITORY}/frontend:latest
+    waitFor:
+      - inspect-frontend
+
+  # =======================================================================
+  # 11. Deploy frontend
+  # =======================================================================
+  - id: deploy-frontend
+    name: gcr.io/google.com/cloudsdktool/cloud-sdk:slim
+    entrypoint: gcloud
+    args:
+      - run
+      - deploy
+      - ${_FRONTEND_SERVICE}
+      - --image=${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_REPOSITORY}/frontend:${COMMIT_SHA}
+      - --region=${_REGION}
+      - --platform=managed
+      - --service-account=${_RUNTIME_SERVICE_ACCOUNT}
+      - --allow-unauthenticated
+      - --port=8080
+      - --cpu=1
+      - --memory=512Mi
+      - --concurrency=80
+      - --min-instances=0
+      - --max-instances=3
+      - --quiet
+    waitFor:
+      - push-frontend-commit
+
+  # =======================================================================
+  # 12. Retrieve actual frontend Cloud Run URL
+  # =======================================================================
+  - id: get-frontend-url
+    name: gcr.io/google.com/cloudsdktool/cloud-sdk:slim
+    entrypoint: bash
+    args:
+      - -c
+      - |
+        set -euo pipefail
+
+        FRONTEND_URL="$$(gcloud run services describe "${_FRONTEND_SERVICE}" \
+          --region="${_REGION}" \
+          --platform=managed \
+          --format='value(status.url)')"
+
+        if [[ -z "$${FRONTEND_URL}" ]]; then
+          echo "Unable to determine frontend Cloud Run URL."
+          exit 1
+        fi
+
+        printf '%s' "$${FRONTEND_URL}" > /workspace/frontend-url.txt
+
+        echo "Frontend URL: $${FRONTEND_URL}"
+    waitFor:
+      - deploy-frontend
+
+   # =======================================================================
+  # 13. Application smoke tests
+  # =======================================================================
+  - id: application-smoke-test
+    name: curlimages/curl
+    entrypoint: sh
+    args:
+      - -c
+      - |
+        set -eu
+
+        BACKEND_URL="$$(cat /workspace/backend-url.txt)"
+        FRONTEND_URL="$$(cat /workspace/frontend-url.txt)"
+        CORS_HEADERS="/tmp/cors-headers.txt"
+
+        echo "Testing frontend: $${FRONTEND_URL}"
+
+        curl \
+          --fail \
+          --show-error \
+          --silent \
+          --output /dev/null \
+          --retry 10 \
+          --retry-delay 6 \
+          --retry-all-errors \
+          "$${FRONTEND_URL}/"
+
+        echo "Frontend test passed."
+        echo
+        echo "Testing backend CORS preflight..."
+
+        curl \
+          --fail \
+          --show-error \
+          --silent \
+          --dump-header "$${CORS_HEADERS}" \
+          --output /dev/null \
+          --retry 5 \
+          --retry-delay 3 \
+          --retry-all-errors \
+          -X OPTIONS \
+          "$${BACKEND_URL}/api/v1/workspaces" \
+          -H "Origin: $${FRONTEND_URL}" \
+          -H "Access-Control-Request-Method: GET" \
+          -H "Access-Control-Request-Headers: content-type"
+
+        echo
+        echo "CORS response headers:"
+        cat "$${CORS_HEADERS}"
+
+        echo
+        echo "Validating Access-Control-Allow-Origin..."
+
+        if grep -iFq \
+          "access-control-allow-origin: $${FRONTEND_URL}" \
+          "$${CORS_HEADERS}"; then
+          echo "Exact frontend origin is allowed."
+        elif grep -iFq \
+          "access-control-allow-origin: *" \
+          "$${CORS_HEADERS}"; then
+          echo "Wildcard origin is allowed."
+        else
+          echo "ERROR: Backend did not allow frontend origin:"
+          echo "$${FRONTEND_URL}"
+          exit 1
+        fi
+
+        echo "Validating Access-Control-Allow-Methods..."
+
+        if ! grep -iE \
+          "^access-control-allow-methods:.*(GET|\*)" \
+          "$${CORS_HEADERS}" >/dev/null; then
+          echo "ERROR: GET was not found in Access-Control-Allow-Methods."
+          exit 1
+        fi
+
+        echo
+        echo "Deployment smoke tests passed."
+        echo "Frontend: $${FRONTEND_URL}"
+        echo "Backend : $${BACKEND_URL}"
+    waitFor:
+      - get-frontend-url
+
+options:
+  logging: CLOUD_LOGGING_ONLY
+
+timeout: 1800s

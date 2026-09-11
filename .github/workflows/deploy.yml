@@ -1,0 +1,121 @@
+name: Deploy FinSightAI to Cloud Run
+
+on:
+  # Deployment is intentionally manual in the public portfolio repository.
+  workflow_dispatch:
+
+# Prevent two deployments from running simultaneously.
+concurrency:
+  group: finsightai-production-deployment
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    name: Build and Deploy
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: read
+      id-token: write
+
+    env:
+      PROJECT_ID: hack-team-finsightai
+      REGION: us-central1
+      CLOUD_BUILD_CONFIG: cloudbuild.yaml
+
+    steps:
+      # Checkout must happen before Google authentication.
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Authenticate to Google Cloud
+        id: google-auth
+        uses: google-github-actions/auth@v2
+        with:
+          project_id: ${{ env.PROJECT_ID }}
+          workload_identity_provider: projects/662541806905/locations/global/workloadIdentityPools/github-2026/providers/github-2026
+          service_account: infrastructure@hack-team-finsightai.iam.gserviceaccount.com
+          export_environment_variables: true
+
+      - name: Set up Google Cloud SDK
+        uses: google-github-actions/setup-gcloud@v2
+        with:
+          project_id: ${{ env.PROJECT_ID }}
+
+      - name: Verify Google Cloud authentication
+        run: |
+          set -euo pipefail
+
+          echo "Authenticated Google Cloud account:"
+          gcloud auth list --filter=status:ACTIVE \
+            --format="value(account)"
+
+          echo "Google Cloud project:"
+          gcloud config get-value project
+
+      - name: Validate deployment files
+        run: |
+          set -euo pipefail
+
+          test -f "${CLOUD_BUILD_CONFIG}" || {
+            echo "ERROR: ${CLOUD_BUILD_CONFIG} was not found."
+            exit 1
+          }
+
+          test -f backend/Dockerfile || {
+            echo "ERROR: backend/Dockerfile was not found."
+            exit 1
+          }
+
+          test -f frontend/Dockerfile || {
+            echo "ERROR: frontend/Dockerfile was not found."
+            exit 1
+          }
+
+          test -f backend/cloudrun-env.yaml || {
+            echo "ERROR: backend/cloudrun-env.yaml was not found."
+            exit 1
+          }
+
+          echo "Required deployment files are present."
+
+      - name: Submit deployment to Cloud Build
+        id: cloud-build
+        run: |
+          set -euo pipefail
+
+          echo "Submitting commit ${GITHUB_SHA} to Cloud Build..."
+
+          gcloud builds submit . \
+            --project="${PROJECT_ID}" \
+            --region="${REGION}" \
+            --config="${CLOUD_BUILD_CONFIG}" \
+            --substitutions="COMMIT_SHA=${GITHUB_SHA}"
+
+      - name: Show deployed services
+        if: success()
+        run: |
+          set -euo pipefail
+
+          echo "FinSightAI deployment completed successfully."
+          echo
+
+          gcloud run services describe finsightai-backend \
+            --project="${PROJECT_ID}" \
+            --region="${REGION}" \
+            --format="table(
+              metadata.name:label=SERVICE,
+              status.url:label=URL,
+              status.latestReadyRevisionName:label=REVISION
+            )"
+
+          echo
+
+          gcloud run services describe finsightai-frontend \
+            --project="${PROJECT_ID}" \
+            --region="${REGION}" \
+            --format="table(
+              metadata.name:label=SERVICE,
+              status.url:label=URL,
+              status.latestReadyRevisionName:label=REVISION
+            )"

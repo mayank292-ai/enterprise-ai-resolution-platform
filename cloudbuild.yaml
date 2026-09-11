@@ -5,7 +5,9 @@ substitutions:
   _BACKEND_SERVICE: finsightai-backend
   _FRONTEND_SERVICE: finsightai-frontend
 
-  _RUNTIME_SERVICE_ACCOUNT: workload@hack-team-finsightai.iam.gserviceaccount.com
+  _RUNTIME_SERVICE_ACCOUNT: ""
+  _ALLOWED_ORIGINS: http://localhost:5173
+  _GEMINI_MODEL: gemini-3.5-flash
 
 steps:
   # =======================================================================
@@ -64,7 +66,7 @@ steps:
       - --concurrency=20
       - --min-instances=1
       - --max-instances=1
-      - --env-vars-file=backend/cloudrun-env.yaml
+      - --set-env-vars=GOOGLE_CLOUD_PROJECT=${PROJECT_ID},GOOGLE_CLOUD_LOCATION=${_REGION},GEMINI_MODEL=${_GEMINI_MODEL},ALLOWED_ORIGINS=${_ALLOWED_ORIGINS}
       - --quiet
     waitFor:
       - push-backend-commit

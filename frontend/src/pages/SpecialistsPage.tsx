@@ -202,7 +202,7 @@ export function SpecialistsPage() {
         <div className="grid lg:grid-cols-[1fr_auto_1fr]">
           <div className="p-5">
             <div className="flex items-center gap-2 text-xs font-semibold text-ink">
-              <Wrench className="h-4 w-4 text-enterprise" /> Planned specialist
+              <Wrench className="h-4 w-4 text-enterprise" /> Preconfigured specialist
             </div>
             <p className="mt-2 text-xs leading-5 text-slate">
               Teams register specialists in advance by combining instructions, evidence

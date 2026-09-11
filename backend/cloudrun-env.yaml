@@ -1,7 +1,0 @@
-GOOGLE_CLOUD_PROJECT: "hack-team-finsightai"
-GOOGLE_CLOUD_LOCATION: "us-central1"
-GEMINI_MODEL: "gemini-2.5-flash"
-GEMINI_MAX_ATTEMPTS: "5"
-GEMINI_STRUCTURED_MAX_ATTEMPTS: "3"
-GEMINI_REQUEST_TIMEOUT_SECONDS: "120"
-ALLOWED_ORIGINS: "http://localhost:5173,http://127.0.0.1:5173,https://finsightai-frontend-rjjji6jl3q-uc.a.run.app"

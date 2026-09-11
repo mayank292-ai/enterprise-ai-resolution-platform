@@ -465,7 +465,7 @@ export function GovernancePage() {
 const roadmap = [
   {
     phase: "Now",
-    period: "Hackathon day",
+    period: "Completed build",
     title: "Governed investigation foundation",
     status: "Demo complete",
     summary: "Evidence-led orchestration, human-approved capability expansion, independent verification, and deterministic replay.",
@@ -546,7 +546,7 @@ export function SettingsPage() {
   return (
     <PageFrame eyebrow="Workspace administration" title="Settings" description="Workspace identity, domain context, and investigation experience preferences.">
       <div className="grid gap-5 xl:grid-cols-2">
-        <Card className="p-5"><h3 className="text-sm font-semibold text-ink">Workspace</h3><p className="mt-1 text-xs text-slate">Operational context applied across investigations.</p><div className="mt-5 space-y-4"><SettingRow label="Workspace name" value="Hackathon Resolution Lab" /><SettingRow label="Active domain" value="Cross-border Payments" /><SettingRow label="Domain model" value="Switchable by workspace" /><SettingRow label="Environment" value="Demo" /></div></Card>
+        <Card className="p-5"><h3 className="text-sm font-semibold text-ink">Workspace</h3><p className="mt-1 text-xs text-slate">Operational context applied across investigations.</p><div className="mt-5 space-y-4"><SettingRow label="Workspace name" value="Enterprise Resolution Lab" /><SettingRow label="Active domain" value="Cross-border Payments" /><SettingRow label="Domain model" value="Switchable by workspace" /><SettingRow label="Environment" value="Demonstration" /></div></Card>
         <Card className="p-5"><h3 className="text-sm font-semibold text-ink">Experience</h3><p className="mt-1 text-xs text-slate">Presentation preferences for operators and reviewers.</p><div className="mt-5 space-y-4"><SettingRow label="Investigation refresh" value="Automatic" /><SettingRow label="Evidence detail" value="Business summary" /><SettingRow label="Technical trace" value="Available on demand" /></div></Card>
       </div>
     </PageFrame>

@@ -65,8 +65,8 @@ export function AnalyticsPage() {
             Analytics
           </h1>
           <p className="mt-2 max-w-3xl text-sm leading-6 text-slate">
-            Session-scale evidence from today’s hackathon build and UI validation. These
-            figures intentionally describe the demo workspace—not fictional enterprise history.
+            Session-scale evidence from the demonstration environment and UI validation.
+            These figures describe the active workspace—not fictional enterprise history.
           </p>
         </div>
         <div className="flex overflow-x-auto rounded-xl border border-slate-200/60 bg-white p-1 shadow-subtle">

@@ -286,7 +286,7 @@ export function KnowledgePage() {
               knowledge patterns
             </p>
             <span className="text-[10px] font-medium uppercase tracking-[.16em] text-slate-300">
-              Hackathon demo workspace · today
+              Demonstration workspace · current session
             </span>
           </div>
           <div className="grid gap-4 lg:grid-cols-2">

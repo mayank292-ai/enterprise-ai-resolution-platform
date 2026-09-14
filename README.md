@@ -2,7 +2,6 @@
 
 > A completed multi-agent investigation platform that autonomously analyzes enterprise operational incidents, verifies root causes, quantifies business impact, and provisions new investigative capabilities when gaps are discovered.
 
-**Status:** Completed 2026 TDI Global Hackathon project
 
 [![Continuous Integration](https://github.com/mayank292-ai/enterprise-ai-resolution-platform/actions/workflows/ci.yml/badge.svg)](https://github.com/mayank292-ai/enterprise-ai-resolution-platform/actions/workflows/ci.yml)
 
